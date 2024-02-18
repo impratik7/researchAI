@@ -1,11 +1,10 @@
-from flask import Flask
+from flask import Flask, jsonify
 from openai import OpenAI
 from google.cloud import texttospeech
 import boto3
 import arxiv
 import together
 import base64
-import time
 from dotenv import load_dotenv
 import os
 
@@ -50,6 +49,8 @@ def search_paper(query):
 
     id_list = []
 
+    data = []
+
     for r in results:
         print(str(r.title) + '\n')
         id = str(r).split('/')[-1]
@@ -60,7 +61,24 @@ def search_paper(query):
         input_prompt = get_image_prompt(intro, id)
         print(input_prompt)
         llm_image(input_prompt, id)
+
+        article_data = {
+            'title': r.title,
+            'intro': intro,
+            'author': r.authors[0],
+            'date': r.published,
+            'doi': r.arxivid,
+            'pdf_link': r.pdf_url,
+            'summary': summary,
+            # 'pdf_url': result.pdf_url,
+            # 'image_url': image_url,
+            # 'mp3_url': mp3_url
+        }
+    data.append(article_data)
+
     download_paper(id_list)
+    return jsonify(data)
+
 
 def download_paper(id_list):
     for id in id_list:
@@ -150,19 +168,21 @@ def text_to_speech(text, id):
 
     s3_client.upload_file(LOCAL_FILE, AWS_S3_BUCKET_NAME, NAME_FOR_S3)
 
-# app = Flask(__name__)
+app = Flask(__name__)
 
-# @app.route('/')
-# def index():
-#     return 'Index Page'
+@app.route('/')
+def index():
+    return 'Index Page'
 
-# @app.route('/hello/<name>')
-# def hello(name):
-#     return 'Hello ' + name
+@app.route('/query/<input>')
+def hello(input):
+    result = search_paper(input)
+    return result
 
-# app.run()
+if __name__ == "__main__":
+    app.run(debug=True)
         
-search_paper('happy')
+# search_paper('love')
 
 # llm_image()
         
