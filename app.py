@@ -57,26 +57,34 @@ def search_paper(query):
         id_list.append(id)
         intro = str(r.summary)
         summary = get_summary(intro, id)
-        text_to_speech(summary, id)
+        print('Summarization done' + '\n')
+
+        MP3_LINK =  text_to_speech(summary, id)
+        print('Text 2 speech and upload done' + '\n')
+
         input_prompt = get_image_prompt(intro, id)
-        print(input_prompt)
-        llm_image(input_prompt, id)
+        print('Image promt generation done' + '\n')
+
+        IMG_LINK = llm_image(input_prompt, id)
+        print('Image from promt done' + '\n')
+
+        download_paper(id_list)
+        print('Paper upload done' + '\n')
+
 
         article_data = {
             'title': r.title,
             'intro': intro,
-            'author': r.authors[0],
+            'author': str(r.authors[0]),
             'date': r.published,
-            'doi': r.arxivid,
             'pdf_link': r.pdf_url,
             'summary': summary,
-            # 'pdf_url': result.pdf_url,
-            # 'image_url': image_url,
-            # 'mp3_url': mp3_url
+            'pdf_url': r.pdf_url,
+            'image_url': IMG_LINK,
+            'mp3_url': MP3_LINK
         }
-    data.append(article_data)
-
-    download_paper(id_list)
+        data.append(article_data)
+    
     return jsonify(data)
 
 
@@ -87,8 +95,12 @@ def download_paper(id_list):
         
         LOCAL_FILE = id + ".pdf"
         NAME_FOR_S3 = f"pdf/{id}/{LOCAL_FILE}"
-
+        PDF_LINK = 'https://' + AWS_S3_BUCKET_NAME + '.s3.' + AWS_REGION + '.amazonaws.com/' + NAME_FOR_S3
+        
         s3_client.upload_file(LOCAL_FILE, AWS_S3_BUCKET_NAME, NAME_FOR_S3)
+        
+        return  PDF_LINK
+
 
 def get_summary(intro, id):
     chat_completion = llm_client.chat.completions.create(
@@ -137,8 +149,11 @@ def llm_image(input_prompt, id):
     
     LOCAL_FILE = id + ".png"
     NAME_FOR_S3 = f"image/{id}/{LOCAL_FILE}"
+    IMG_LINK = 'https://' + AWS_S3_BUCKET_NAME + '.s3.' + AWS_REGION + '.amazonaws.com/' + NAME_FOR_S3
 
     s3_client.upload_file(LOCAL_FILE, AWS_S3_BUCKET_NAME, NAME_FOR_S3)
+
+    return IMG_LINK
 
 
 def text_to_speech(text, id):
@@ -165,8 +180,11 @@ def text_to_speech(text, id):
     
     LOCAL_FILE = id + ".mp3"
     NAME_FOR_S3 = f"mp3/{id}/{LOCAL_FILE}"
+    MP3_LINK = 'https://' + AWS_S3_BUCKET_NAME + '.s3.' + AWS_REGION + '.amazonaws.com/' + NAME_FOR_S3
 
     s3_client.upload_file(LOCAL_FILE, AWS_S3_BUCKET_NAME, NAME_FOR_S3)
+
+    return MP3_LINK
 
 app = Flask(__name__)
 
@@ -180,7 +198,7 @@ def hello(input):
     return result
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0',port=8000)
         
 # search_paper('love')
 
